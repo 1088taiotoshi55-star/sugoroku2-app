@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>類義語すごろく・完成版</title>
+    <title>類義語すごろく・鬼滅モード</title>
     <style>
         :root { --primary: #ff4757; --locked: #747d8c; --success: #2ed573; --selected: #fff9db; --accent: #f1c40f; }
         body { margin: 0; font-family: sans-serif; overflow: hidden; background: #000; color: white; -webkit-tap-highlight-color: transparent; }
@@ -21,9 +21,15 @@
         .node.goal.ready { cursor: pointer; animation: pulse 1s infinite alternate; box-shadow: 0 0 25px gold; }
         @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.15); } }
         
-        /* --- ボタン配置の修正 --- */
+        /* --- 追加：バージョン表示（左上） --- */
+        .version-info {
+            position: fixed; top: 10px; left: 10px;
+            font-size: 12px; color: rgba(255, 255, 255, 0.6);
+            z-index: 100; font-family: monospace;
+            pointer-events: none; /* 誤タップ防止 */
+        }
         
-        /* 管理ボタン：一覧画面の左下 */
+        /* ボタン配置 */
         .btn-admin { 
             position: fixed; bottom: 20px; left: 20px; 
             font-size: 14px; padding: 10px 15px; 
@@ -31,8 +37,6 @@
             border: 1px solid #999; border-radius: 30px; 
             cursor: pointer; z-index: 100; 
         }
-        
-        /* 中断（キャンセル）ボタン：クイズ画面の左下 */
         .btn-cancel { 
             position: fixed; bottom: 20px; left: 20px; 
             width: 50px; height: 50px; 
@@ -45,22 +49,27 @@
         }
 
         /* カードスタイル */
-        .card { width: 100%; max-width: 500px; background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 60px; }
+        .card { width: 100%; max-width: 500px; background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-bottom: 60px; max-height: 90vh; overflow-y: auto; }
         .btn-action { width: 100%; padding: 15px; margin-top: 10px; border: none; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; }
         
         /* クイズ・音声ボタン */
         .q-row { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
         .q-part { flex: 1; font-size: 18px; font-weight: bold; padding: 10px; border-left: 6px solid var(--primary); background: #fff5f5; line-height: 1.5; border-radius: 4px; }
-        .btn-speak { width: 50px; height: 50px; flex-shrink: 0; border-radius: 50%; border: 2px solid #ddd; background: #fff; cursor: pointer; font-size: 24px; display: flex; align-items: center; justify-content: center; transition: 0.1s; }
+        .btn-speak { width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; border: 2px solid #ddd; background: #fff; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: 0.1s; }
         .btn-speak:active { transform: scale(0.9); }
         .btn-speak.active { background: var(--accent); border-color: orange; animation: speaking 1s infinite; }
         @keyframes speaking { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
-        .btn-c { width: 100%; padding: 14px; margin: 6px 0; font-size: 16px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; text-align: left; }
+        /* 選択肢エリア */
+        .choice-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+        .btn-c { flex: 1; padding: 14px; font-size: 16px; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; text-align: left; }
         .btn-c.sel { border-color: var(--accent); background: var(--selected); font-weight: bold; }
         
+        /* 結果画像 */
+        #res-img { width: 100%; text-align: center; margin-bottom: 15px; }
+        #res-img img { width: 100%; max-height: 250px; object-fit: cover; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
         #congrats-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(45deg, #ff0099, #493240, #00dbde, #f09819); background-size: 400% 400%; animation: gradientBG 10s ease infinite; z-index: 300; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 20px; }
-        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;}}
         .congrats-card { background: rgba(0,0,0,0.8); padding: 30px; border-radius: 20px; border: 5px solid gold; max-width: 90%; max-height: 90%; overflow-y: auto; text-align: center; }
     </style>
 </head>
@@ -69,6 +78,8 @@
 <div id="bg"></div>
 
 <div id="menu-screen">
+    <div class="version-info">20260109ver1</div>
+    
     <div class="path" id="game-path"></div>
     <button class="btn-admin" onclick="App.adminMenu()">管理</button>
 </div>
@@ -81,13 +92,22 @@
 
 <div id="expl-screen" class="screen"><h1 id="expl-title"></h1><div class="card" style="text-align:center;"><p style="font-size:13px; color:#888;">振り返り</p><div id="expl-q-review" style="text-align:left; margin-bottom:15px;"></div><p style="font-size:18px; margin-bottom:10px;">正しい答えはこれや！</p><div id="expl-ans" style="background:#f0f7ff; padding:15px; border-radius:10px; margin-bottom:20px; font-size:22px; color:blue; font-weight:bold;"></div><button class="btn-action" style="background:var(--success);" onclick="App.next()">次へ進む</button><button class="btn-action" style="background:#888; font-size:14px; padding:10px; margin-top:5px;" onclick="App.backToQuiz()">解答画面に戻る</button></div></div>
 
-<div id="result-screen" class="screen"><h1>結果発表</h1><div class="card" style="text-align:center;"><div id="res-stats" style="font-size:22px; margin-bottom:15px;"></div><div id="res-comment" style="font-size:20px; color:#555; border:2px dashed var(--primary); padding:15px; background:#fffef0; line-height:1.4;"></div><button class="btn-action" style="background:var(--primary);" onclick="location.reload()">すごろくに戻る</button></div></div>
+<div id="result-screen" class="screen">
+    <h1>結果発表</h1>
+    <div class="card" style="text-align:center;">
+        <div id="res-img"></div>
+        <div id="res-stats" style="font-size:22px; margin-bottom:15px;"></div>
+        <div id="res-comment" style="font-size:20px; color:#555; border:2px dashed var(--primary); padding:15px; background:#fffef0; line-height:1.4;"></div>
+        <button class="btn-action" style="background:var(--primary);" onclick="location.reload()">すごろくに戻る</button>
+    </div>
+</div>
 
 <div id="congrats-screen"><div class="congrats-card"><h1 style="color:gold;">🎉 祝！完全制覇！ 🎉</h1><div id="final-message" style="text-align:left; line-height:1.8; white-space:pre-wrap; font-size:18px; color:white;"></div><button class="btn-action" style="background:gold; color:black;" onclick="location.reload()">すごろくに戻る</button></div></div>
 
 <script>
-    // 共通表示ルール（set.js読み込み前に定義）
+    // 共通表示ルール
     const commonRender = function(card, data) {
+        // 問題文（上部）
         const createRow = (text) => {
             const row = document.createElement('div'); row.className = 'q-row';
             row.innerHTML = `<div class="q-part">${text}</div><button class="btn-speak">🔊</button>`;
@@ -99,12 +119,26 @@
         
         const area = document.createElement('div'); area.style.marginTop = "15px";
         data.choices.forEach((txt, i) => {
-            const b = document.createElement('button'); b.className = 'btn-c'; b.innerText = txt;
+            // 選択肢 + 音声ボタン の横並びコンテナ
+            const row = document.createElement('div');
+            row.className = 'choice-row';
+
+            const b = document.createElement('button'); 
+            b.className = 'btn-c'; 
+            b.innerText = txt;
             b.onclick = () => { 
                 App.stopSpeech(); 
                 App.check(i === data.correct, data.choices[data.correct], `<div class="q-part">${data.q1}</div><div class="q-part">${data.q2}</div>`); 
             };
-            area.appendChild(b);
+
+            const speakBtn = document.createElement('button');
+            speakBtn.className = 'btn-speak';
+            speakBtn.innerText = '🔊';
+            speakBtn.onclick = (e) => App.speak(txt, e.currentTarget);
+
+            row.appendChild(b);
+            row.appendChild(speakBtn);
+            area.appendChild(row);
         });
         card.appendChild(area);
         const bSkip = document.createElement('button'); bSkip.className = 'btn-action'; bSkip.style.background = "#888"; bSkip.innerText = "分かりまへん";
@@ -117,6 +151,13 @@
         synth: window.speechSynthesis,
         voices: [],
         audioUnlocked: false,
+        // 画像リスト（サンプル）
+        kimetsuImages: [
+            "https://images.unsplash.com/photo-1618336753974-aae8e04506aa?auto=format&fit=crop&w=500&q=80",
+            "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=500&q=80",
+            "https://images.unsplash.com/photo-1528360983277-13d9b152c56e?auto=format&fit=crop&w=500&q=80",
+            "https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=500&q=80"
+        ],
 
         start() {
             this.sets = window.quizSets || [];
@@ -124,15 +165,10 @@
             this.progress = saved ? JSON.parse(saved) : Array(36).fill(0);
             this.drawMap();
             
-            // 音声ボイス読み込み待機
             if (this.synth) {
-                const loadVoices = () => {
-                    this.voices = this.synth.getVoices();
-                };
+                const loadVoices = () => { this.voices = this.synth.getVoices(); };
                 loadVoices();
-                if (this.synth.onvoiceschanged !== undefined) {
-                    this.synth.onvoiceschanged = loadVoices;
-                }
+                if (this.synth.onvoiceschanged !== undefined) { this.synth.onvoiceschanged = loadVoices; }
             }
         },
 
@@ -153,8 +189,6 @@
             setTimeout(() => {
                 const u = new SpeechSynthesisUtterance(text.replace(/（　）/g, "まるまる"));
                 u.lang = 'ja-JP'; u.rate = 1.0; 
-                
-                // 日本語ボイス強制検索
                 const jaVoice = this.voices.find(v => v.lang === 'ja-JP') || this.voices.find(v => v.lang.includes('ja'));
                 if (jaVoice) u.voice = jaVoice;
 
@@ -207,7 +241,7 @@
             document.getElementById('intro-screen').style.display = 'flex';
             document.getElementById('intro-title').innerText = `【${d.title}】セット ${idx+1}`;
             document.getElementById('intro-msg').innerText = d.introMessages[Math.floor(Math.random()*d.introMessages.length)];
-            document.getElementById('global-cancel').style.display = 'flex'; // 中断ボタン表示
+            document.getElementById('global-cancel').style.display = 'flex';
         },
         startQuiz() { 
             this.initAudio();
@@ -235,15 +269,19 @@
         backToQuiz() { document.getElementById('expl-screen').style.display = 'none'; document.getElementById('quiz-screen').style.display = 'flex'; },
         next() { if(this.isLastCorrect) this.okCount++; this.qIdx++; if(this.qIdx < this.sets[this.setIdx].questions.length) this.ask(); else this.finish(); },
         finish() {
-            const total = this.sets[this.setIdx].questions.length;
-            const rate = Math.round((this.okCount / total) * 100);
+            const rate = Math.round((this.okCount / this.sets[this.setIdx].questions.length) * 100);
             this.progress[this.setIdx] = Math.max(this.progress[this.setIdx], rate);
             localStorage.setItem('sugoroku_v10', JSON.stringify(this.progress));
             document.getElementById('global-cancel').style.display = 'none';
             document.getElementById('expl-screen').style.display = 'none';
             document.getElementById('result-screen').style.display = 'flex';
-            document.getElementById('res-stats').innerText = `${this.okCount} / ${total} 問正解 (${rate}%)`;
-            document.getElementById('res-comment').innerText = "よう頑張ったな！";
+            
+            const imgArea = document.getElementById('res-img');
+            const randomImg = this.kimetsuImages[Math.floor(Math.random() * this.kimetsuImages.length)];
+            imgArea.innerHTML = `<img src="${randomImg}" alt="Clear Image">`;
+            
+            document.getElementById('res-stats').innerText = `${this.okCount} / ${this.sets[this.setIdx].questions.length} 問正解 (${rate}%)`;
+            document.getElementById('res-comment').innerText = "よう頑張ったな！全集中や！";
         },
         cancelGame() {
             if(confirm("中断して一覧に戻るで？")) {
